@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import numpy as np
 from keras.models import Sequential, load_model
 from keras.layers import Dense, LSTM, Embedding, Dropout

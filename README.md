@@ -29,3 +29,11 @@ Then convert the glove model into a word2vec format, using the following command
 ```
 python3 glove_conv.py
 ```
+
+## Papers
+
+- [Deep Poetry](https://web.stanford.edu/class/archive/cs/cs224n/cs224n.1174/reports/2762063.pdf)
+- [GhostWriter](http://www.emnlp2015.org/proceedings/EMNLP/pdf/EMNLP221.pdf)
+- [Karpathy's Blog](http://karpathy.github.io/2015/05/21/rnn-effectiveness/)
+- [Accuracy of RNNs for Lyrics Gen](http://ejosue.com/wp-content/uploads/COMPSCI380-2018-LSTM-RNN.pdf)
+- [Medium Article](https://medium.com/coinmonks/word-level-lstm-text-generator-creating-automatic-song-lyrics-with-neural-networks-b8a1617104fb)

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import csv
 from nltk import word_tokenize
 import re
