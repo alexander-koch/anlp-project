@@ -2,24 +2,36 @@ import numpy as np
 from keras.models import Sequential, load_model
 from keras.layers import Dense, LSTM, Embedding, Dropout
 from keras import optimizers
-from gensim.models import Word2Vec
+from gensim.models import KeyedVectors
 
 SEQUENCE_LENGTH = 4
 HIDDEN_SIZE = 256
 
-def one_hot_encode(word, word2idx):
-    vec = np.zeros((len(word2idx),))
-    vec[word2idx[word]] = 1
-    return vec
+EMBEDDING_SIZE_ORIG = 100
+EMBEDDING_SIZE = 102
 
-def encode_words(words, word2idx):
-    vec = np.zeros((len(words), len(word2idx)))
+def encode_word(word, w2v):
+    if word == "<pad>":
+        v = np.zeros((EMBEDDING_SIZE,))
+        v[EMBEDDING_SIZE-1] = 1
+        return v
+    elif word == "<newline>":
+        v = np.zeros((EMBEDDING_SIZE,))
+        v[EMBEDDING_SIZE-2] = 1
+        return v
+    else:
+        v = w2v[word]
+        w = np.zeros((2,))
+        return np.append(v, w, axis=0)
+
+def encode_words(words, w2v):
+    vec = np.zeros((len(words), EMBEDDING_SIZE))
     for (i,word) in enumerate(words):
-        vec[i, word2idx[word]] = 1
+        vec[i] = encode_word(word, w2v)
     return vec
 
 def prepare_song(song, buffer_length):
-    tokens = song + ["<end>"]
+    tokens = song# + ["<end>"]
 
     x_train = []
     y_train = []
@@ -33,20 +45,22 @@ def prepare_song(song, buffer_length):
 
     return x_train,y_train
 
-def build_model(vocab_size):
+def build_model():
     model = Sequential()
-    model.add(LSTM(128, input_shape=(SEQUENCE_LENGTH, vocab_size), return_sequences=True))
+    #model.add(Embedding(vocab_size, 100, SEQUENCE_LENGTH))
+    model.add(LSTM(128, input_shape=(SEQUENCE_LENGTH, EMBEDDING_SIZE), return_sequences=True))
     model.add(Dropout(0.2))
     model.add(LSTM(128))
     model.add(Dropout(0.2))
-    model.add(Dense(vocab_size, activation='softmax'))
+    model.add(Dense(EMBEDDING_SIZE, activation='softmax'))
 # opt = optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
     model.compile(loss = 'categorical_crossentropy', optimizer="adam", metrics = ['accuracy'])
     print(model.summary())
     return model
 
 def main():
-    words = {'<end>', '<pad>'}
+    print("* Reading sentences...")
+    words = {'<pad>'}
     songs = []
     with open("sentences.txt", "r") as f:
         for line in f.readlines()[:100]:
@@ -54,24 +68,36 @@ def main():
             songs.append(tokens)
             words = words.union(set(tokens))
 
-    #w2v = Word2Vec.load_word2vec_format('./GoogleNews-vectors-negative300.bin', binary=True)
+    print("* Loading model...")
+    w2v = KeyedVectors.load_word2vec_format('glove.6B.100d.txt.word2vec', binary=False)
+
+    print("* Testing...")
+    vec = encode_word("world", w2v)
+    print(vec)
+    print(vec.shape)
 
     #print(songs[0])
 
-    vocab_size = len(words)
-    word2idx = { word:i for i,word in enumerate(words) }
-    idx2word = { i:word for i,word in enumerate(words) }
+    #vocab_size = len(words)
+    #word2idx = { word:i for i,word in enumerate(words) }
+    #idx2word = { i:word for i,word in enumerate(words) }
 
-    print("Vocab size:", vocab_size)
+    #print("Vocab size:", vocab_size)
+
+    print("* Preparing data...")
 
     x_vec, y_vec = prepare_song(songs[0], SEQUENCE_LENGTH)
 
+    print("* Encoding...")
+
     num_samples = len(x_vec)
-    x_train = np.zeros((num_samples, SEQUENCE_LENGTH, vocab_size))
-    y_train = np.zeros((num_samples, vocab_size))
+    x_train = np.zeros((num_samples, SEQUENCE_LENGTH, EMBEDDING_SIZE))
+    y_train = np.zeros((num_samples, EMBEDDING_SIZE))
     for i in range(num_samples):
-        x_train[i] = encode_words(x_vec[i], word2idx)
-        y_train[i] = one_hot_encode(y_vec[i], word2idx)
+        x_train[i] = encode_words(x_vec[i], w2v)
+        y_train[i] = encode_word(y_vec[i], w2v)
+
+    print("* Done")
 
     print(x_train.shape)
     print(y_train.shape)
@@ -81,39 +107,6 @@ def main():
     print(y_train[0])
     print(np.argmax(y_train[0], axis=0))
 
-    model = build_model(vocab_size)
-    model.load_weights("model_4.h5")
-
-    #print(words)
-
-    #model.fit(x_train, y_train, batch_size=128, epochs=600)
-    #model.save_weights("model_4.h5")
-
-    words = np.array(["i", "am", "not", "like"])
-    words = encode_words(words, word2idx)
-    words = words.reshape(1, SEQUENCE_LENGTH, vocab_size)
-
-    #words = x_train[0].reshape(1, SEQUENCE_LENGTH, vocab_size)
-    for i in range(SEQUENCE_LENGTH):
-        print(idx2word[np.argmax(words[0, i])])
-
-    for i in range(30):
-        preds = model.predict(words)
-        #print(preds)
-
-        idx = np.argmax(preds)
-        word = idx2word[idx]
-    # print([idx2word[i] for i in np.argmax(x_train[0], axis=1)])
-        print("Next word is", word)
-
-        new_words = np.zeros((1, SEQUENCE_LENGTH, vocab_size))
-        new_words[0, 0] = words[0, 1]
-        new_words[0, 1] = words[0, 2]
-        new_words[0, 2] = words[0, 3]
-        new_words[0, 3] = one_hot_encode(word, word2idx)
-
-        words = new_words
-    
 
 if __name__ == '__main__':
     main()
