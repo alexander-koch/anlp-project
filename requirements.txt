@@ -1,0 +1,6 @@
+Keras == 2.3.1
+gensim == 3.8.1
+nltk == 3.4.5
+numpy == 1.17.4
+pandas == 0.25.3
+tqdm == 4.38.0
