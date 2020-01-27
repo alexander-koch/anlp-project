@@ -2,7 +2,7 @@
 
 ## Goal
 
-Generate a model to generate fake lyrics using RNNs.
+Create a language model to generate fake lyrics using RNNs.
 
 ## Requirements
 
@@ -14,20 +14,16 @@ pip3 install -r requirements.txt
 
 ## Setup
 
-The date folder contains example data that can be converted using
-the `data.py` script
+Download the Kaggle dataset from [here](https://www.kaggle.com/mousehead/songlyrics) and extract it. Then convert the data using the `data.py` script.
 
-```
-python3 data.py
-```
-
-this will generate a file called `sentences.txt` which contains
-the tokenizes song lyrics. Every song is contained in one line.
+This will generate a file called `sentences.txt` which contains
+the tokenized song lyrics. Every song is contained in one line.
 
 The current development model is in the Dev.ipynb IPython notebook.
-It uses GloVe vectors as an embedding
+It uses GloVe vectors as the embedding.
 
 Download the pre-trained model [here](http://nlp.stanford.edu/data/glove.6B.zip)
+
 Then convert the glove model into a word2vec format, using the following command
 
 ```
