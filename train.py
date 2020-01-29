@@ -1,112 +1,73 @@
-#!/usr/bin/env python3
-import numpy as np
-from keras.models import Sequential, load_model
-from keras.layers import Dense, LSTM, Embedding, Dropout
-from keras import optimizers
+import torch
+import torch.nn as nn
 from gensim.models import KeyedVectors
-
-SEQUENCE_LENGTH = 4
-HIDDEN_SIZE = 256
-
-EMBEDDING_SIZE_ORIG = 100
-EMBEDDING_SIZE = 102
+import numpy as np
 
 def encode_word(word, w2v):
+    embedding_size = w2v.vector_size+3
+
     if word == "<pad>":
-        v = np.zeros((EMBEDDING_SIZE,))
-        v[EMBEDDING_SIZE-1] = 1
+        v = np.zeros((embedding_size,))
+        v[embedding_size-1] = 1
         return v
     elif word == "<newline>":
-        v = np.zeros((EMBEDDING_SIZE,))
-        v[EMBEDDING_SIZE-2] = 1
+        v = np.zeros((embedding_size,))
+        v[embedding_size-2] = 1
         return v
-    else:
+    elif word == "<unk>" or word not in w2v:
+        v = np.zeros((embedding_size,))
+        v[embedding_size-3] = 1
+        return v
+    else:        
         v = w2v[word]
-        w = np.zeros((2,))
+        w = np.zeros((3,))
         return np.append(v, w, axis=0)
 
 def encode_words(words, w2v):
-    vec = np.zeros((len(words), EMBEDDING_SIZE))
+    vec = np.zeros((len(words), w2v.vector_size))
     for (i,word) in enumerate(words):
         vec[i] = encode_word(word, w2v)
     return vec
 
-def prepare_song(song, buffer_length):
-    tokens = song# + ["<end>"]
+class LyricsModel(nn.Module):
+    def __init__(self, embedding_size, vocab_size):
+        super(LyricsModel, self).__init__()
 
-    x_train = []
-    y_train = []
-    for i in range(0, len(song)):
-        if i+buffer_length+1 >= len(tokens):
-            pad_length = (i+buffer_length+1) - len(tokens)
-            tokens += ['<pad>'] * pad_length
+        self.hidden_size_1 = 128
+        self.hidden_size_2 = 1024
+        self.hidden_size_3 = 2048
+        self.embedding_size = embedding_size
+        self.vocab_size = vocab_size
+        
+        # Load weights from pre-trained GloVe vectors as embedding weights
+        #weights = torch.FloatTensor(w2v.vectors)
+        #self.embedding = nn.Embedding.from_pretrained(weights)
+        #self.embedding.weight.requires_grad = False
 
-        x_train.append(tokens[i:i+buffer_length])
-        y_train.append(tokens[i+buffer_length])
+        self.gru_1 = nn.GRU(self.embedding_size, self.hidden_size_1)
+        self.dropout_1 = nn.Dropout(p=0.4)
+        self.gru_2 = nn.GRU(self.hidden_size_1, self.hidden_size_2)
+        self.dropout_2 = nn.Dropout(p=0.4)
+        self.linear_1 = nn.Linear(self.hidden_size_2, self.hidden_size_3)
+        self.relu = nn.LeakyReLU()
+        self.linear_2 = nn.Linear(self.hidden_size_3, vocab_size)
+        self.softmax = nn.Softmax()
 
-    return x_train,y_train
-
-def build_model():
-    model = Sequential()
-    #model.add(Embedding(vocab_size, 100, SEQUENCE_LENGTH))
-    model.add(LSTM(128, input_shape=(SEQUENCE_LENGTH, EMBEDDING_SIZE), return_sequences=True))
-    model.add(Dropout(0.2))
-    model.add(LSTM(128))
-    model.add(Dropout(0.2))
-    model.add(Dense(EMBEDDING_SIZE, activation='softmax'))
-# opt = optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-    model.compile(loss = 'categorical_crossentropy', optimizer="adam", metrics = ['accuracy'])
-    print(model.summary())
-    return model
+    def forward(self, sequence):
+        x = self.gru_1(sequence)
+        x = self.dropout_1(x)
+        x = self.gru_2(x)
+        x = self.dropout_2(x)
+        x = self.linear_1(x)
+        x = self.relu(x)
+        x = self.linear_2(x)
+        return self.softmax(x)
 
 def main():
-    print("* Reading sentences...")
-    words = {'<pad>'}
-    songs = []
-    with open("sentences.txt", "r") as f:
-        for line in f.readlines()[:100]:
-            tokens = [token for token in line.rstrip().split(" ")]
-            songs.append(tokens)
-            words = words.union(set(tokens))
+    w2v = KeyedVectors.load_word2vec_format('glove.6B.100d.bin.word2vec', binary=True)
+    embedding_size = w2v.vector_size
 
-    print("* Loading model...")
-    w2v = KeyedVectors.load_word2vec_format('glove.6B.100d.txt.word2vec', binary=False)
-
-    print("* Testing...")
-    vec = encode_word("world", w2v)
-    print(vec)
-    print(vec.shape)
-
-    #print(songs[0])
-
-    #vocab_size = len(words)
-    #word2idx = { word:i for i,word in enumerate(words) }
-    #idx2word = { i:word for i,word in enumerate(words) }
-
-    #print("Vocab size:", vocab_size)
-
-    print("* Preparing data...")
-
-    x_vec, y_vec = prepare_song(songs[0], SEQUENCE_LENGTH)
-
-    print("* Encoding...")
-
-    num_samples = len(x_vec)
-    x_train = np.zeros((num_samples, SEQUENCE_LENGTH, EMBEDDING_SIZE))
-    y_train = np.zeros((num_samples, EMBEDDING_SIZE))
-    for i in range(num_samples):
-        x_train[i] = encode_words(x_vec[i], w2v)
-        y_train[i] = encode_word(y_vec[i], w2v)
-
-    print("* Done")
-
-    print(x_train.shape)
-    print(y_train.shape)
-
-    print(x_train[0])
-    print(np.argmax(x_train[0], axis=1))
-    print(y_train[0])
-    print(np.argmax(y_train[0], axis=0))
+    model = LyricsModel(embedding_size, 5000)
 
 
 if __name__ == '__main__':
