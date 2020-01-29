@@ -27,7 +27,7 @@ Download the pre-trained model [here](http://nlp.stanford.edu/data/glove.6B.zip)
 Then convert the glove model into a word2vec format, using the following command
 
 ```
-python3 glove_conv.py
+python3 scripts/glove_conv.py
 ```
 
 ## Papers

@@ -4,3 +4,4 @@
 glove.6B.*
 *.h5
 *.bin
+__pycache__

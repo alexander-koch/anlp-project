@@ -1,10 +1,26 @@
 import torch
 import torch.nn as nn
+import torch.optim as optim
 from gensim.models import KeyedVectors
 import numpy as np
+from random import shuffle
 
-def encode_word(word, w2v):
-    embedding_size = w2v.vector_size+3
+EMBEDDING_EXT = 3
+
+def encode_word(word: str, w2v: KeyedVectors):
+    """
+    Encodes a word as a Word2Vec vector.
+    Increases the dimensionality of the vector by three,
+    to store the tokens <pad>, <newline> and <unk>.
+    
+    Args:
+        word: Word to encode
+        w2v: Word2Vec instance
+
+    Returns:
+        Word2Vec vector
+    """
+    embedding_size = w2v.vector_size+EMBEDDING_EXT
 
     if word == "<pad>":
         v = np.zeros((embedding_size,))
@@ -24,10 +40,119 @@ def encode_word(word, w2v):
         return np.append(v, w, axis=0)
 
 def encode_words(words, w2v):
-    vec = np.zeros((len(words), w2v.vector_size))
+    """
+    Encodes a sequence of words into the Word2Vec format.
+
+    Args:
+        words: List/Iterator of words
+        w2v: Word2Vec instance
+
+    Returns:
+        Numpy array of encoded words
+    """
+    vec = np.zeros((len(words), w2v.vector_size+EMBEDDING_EXT))
     for (i,word) in enumerate(words):
         vec[i] = encode_word(word, w2v)
     return vec
+
+def decode_vec(vec: np.ndarray, w2v: KeyedVectors):
+    """
+    Decodes a vector into the corresponding word
+
+    Args:
+        vec: Vector representation of word
+        w2v: Word2Vec instance
+
+    Returns:
+        The word as a string
+    """
+    embedding_size = w2v.vector_size
+
+    base_vec = vec[:embedding_size]
+    ext_vec = vec[embedding_size:]
+    if ext_vec[0]:
+        return "<unk>"
+    elif ext_vec[1]:
+        return "<newline>"
+    elif ext_vec[2]:
+        return "<pad>"
+    else:
+        return w2v.similar_by_vector(base_vec)[0][0]
+
+def build_ngrams(song, buffer_length):
+    """Builds ngram training data."""
+    tokens = song
+
+    x_train = []
+    y_train = []
+    for i in range(0, len(song)):
+        if i+buffer_length+1 >= len(tokens):
+            pad_length = (i+buffer_length+1) - len(tokens)
+            tokens += ['<pad>'] * pad_length
+
+        x_train.append(tokens[i:i+buffer_length])
+        y_train.append(tokens[i+buffer_length])
+
+    return x_train,y_train
+
+def load_songs_dataset(path, sequence_length):
+    """Loads song training data in n-gram format.
+    Expects a text file where every line contains one song.
+    The song must have been tokenized before.
+    """
+    token_vocab = {'<pad>', '<unk>'}
+    x_vec = []
+    y_vec = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f.readlines():
+            # Tokenize the line, append to vocab
+            tokens = [token for token in line.rstrip().split(" ")]
+            token_vocab = token_vocab.union(set(tokens))
+
+            x_vec_i, y_vec_i = build_ngrams(tokens, sequence_length)
+            x_vec.extend(x_vec_i)
+            y_vec.extend(y_vec_i)
+    return x_vec, y_vec, token_vocab
+
+def one_hot_encode(word: str, word2idx: dict):
+    """One-hot encodes a word based on a given dictionary"""
+    v = np.zeros((len(word2idx, )), dtype=np.int64)
+    v[word2idx[word]] = 1
+    return v
+
+def one_hot_decode(vec: np.ndarray, idx2word: dict):
+    return idx2word[np.argmax(word)]
+
+def generate_batches(data_length, mini_batch_size):
+    for begin in range(0, data_length, mini_batch_size):
+        end = min(begin + mini_batch_size, data_length)
+        yield begin, end
+
+def load_batch(xs, ys, begin, end, w2v, word2idx):
+    batch_size = end-begin
+    if batch_size <= 0:
+        raise ValueError
+
+    embedding_size = w2v.vector_size+EMBEDDING_EXT
+    vocab_size = len(word2idx)
+
+    xs_batch = xs[begin:end]
+    ys_batch = ys[begin:end]
+
+    sequence_length = len(xs_batch[0])
+    
+    x_train = np.zeros((batch_size, sequence_length, embedding_size), dtype=np.float64)
+    y_train = np.zeros((batch_size, vocab_size), dtype=np.int64)
+    
+    c = list(zip(xs_batch, ys_batch))
+    shuffle(c)
+    xs_batch, ys_batch = zip(*c)
+    
+    for i in range(batch_size):
+        x_train[i] = encode_words(xs_batch[i], w2v)
+        y_train[i] = one_hot_encode(ys_batch[i], word2idx)
+    
+    return x_train, y_train
 
 class LyricsModel(nn.Module):
     def __init__(self, embedding_size, vocab_size):
@@ -38,11 +163,6 @@ class LyricsModel(nn.Module):
         self.hidden_size_3 = 2048
         self.embedding_size = embedding_size
         self.vocab_size = vocab_size
-        
-        # Load weights from pre-trained GloVe vectors as embedding weights
-        #weights = torch.FloatTensor(w2v.vectors)
-        #self.embedding = nn.Embedding.from_pretrained(weights)
-        #self.embedding.weight.requires_grad = False
 
         self.gru_1 = nn.GRU(self.embedding_size, self.hidden_size_1)
         self.dropout_1 = nn.Dropout(p=0.4)
@@ -51,24 +171,68 @@ class LyricsModel(nn.Module):
         self.linear_1 = nn.Linear(self.hidden_size_2, self.hidden_size_3)
         self.relu = nn.LeakyReLU()
         self.linear_2 = nn.Linear(self.hidden_size_3, vocab_size)
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, sequence):
-        x = self.gru_1(sequence)
+        x, _ = self.gru_1(sequence)
         x = self.dropout_1(x)
-        x = self.gru_2(x)
+        x, _ = self.gru_2(x)
         x = self.dropout_2(x)
         x = self.linear_1(x)
         x = self.relu(x)
         x = self.linear_2(x)
         return self.softmax(x)
 
+SEQUENCE_LENGTH = 6
+
 def main():
     w2v = KeyedVectors.load_word2vec_format('glove.6B.100d.bin.word2vec', binary=True)
-    embedding_size = w2v.vector_size
 
-    model = LyricsModel(embedding_size, 5000)
+    # Load song dataset
+    x_train, y_train, vocab = load_songs_dataset("data/sentences.txt", SEQUENCE_LENGTH)
+    vocab_size = len(vocab)
+    print(x_train[0], y_train[0])
+    print("Vocab size:", vocab_size)
 
+    # Create index mapping for output layer
+    words = list(vocab)
+    word2idx = { word:i for i,word in enumerate(words) }
+    idx2word = { i:word for i,word in enumerate(words) }
+
+    # Generate batches (size 256)
+    batches = generate_batches(len(x_train), 256)
+
+    # Generate the model
+    embedding_size = w2v.vector_size+EMBEDDING_EXT
+    model = LyricsModel(embedding_size, vocab_size)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.RMSprop(model.parameters())
+
+    # Big Brain Time!
+    for epoch in range(100):
+        
+        running_loss = 0.0
+        for (i, (begin, end)) in enumerate(batches):
+            optimizer.zero_grad()
+            x_batch, y_batch = load_batch(x_train, y_train, begin, end, w2v, word2idx)
+
+            x_batch = torch.FloatTensor(x_batch)
+            y_batch = torch.LongTensor(y_batch)
+
+            preds = model(x_batch)
+            loss = criterion(preds, y_batch)
+            loss.backward()
+            optimizer.step()
+
+            if i % 10 == 9:    # print every 10 mini-batches
+                print('[%d, %5d] loss: %.3f' %
+                    (epoch + 1, i + 1, running_loss / 10))
+                running_loss = 0.0
+
+            running_loss += loss.item()
+            
+    torch.save(net.state_dict(), "lyrics_gen.pth")
+        
 
 if __name__ == '__main__':
     main()

@@ -30,21 +30,5 @@ def build_csv():
             for tokens in song:
                 f.write(' '.join(tokens) + "\n")
 
-# def build_w2v():
-#     model = Word2Vec()
-#     update = True
-#
-#     for songs in tqdm(generate_sentences_pd("songdata.csv", 20, 400), total=400/20):
-#         sentences = list(itertools.chain.from_iterable(songs.values))
-#         if update:
-#             model.build_vocab(sentences)
-#             update = False
-#         else:
-#             model.build_vocab(sentences, update=True)
-#         model.train(sentences, total_examples=len(sentences), epochs=80)
-#
-#     print(model)
-#     model.save("model.bin")
-
 if __name__ == '__main__':
     build_csv()
