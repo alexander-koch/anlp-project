@@ -37,4 +37,4 @@ python3 scripts/glove_conv.py
 - [Karpathy's Blog](http://karpathy.github.io/2015/05/21/rnn-effectiveness/)
 - [Accuracy of RNNs for Lyrics Gen](http://ejosue.com/wp-content/uploads/COMPSCI380-2018-LSTM-RNN.pdf)
 - [Medium Article](https://medium.com/coinmonks/word-level-lstm-text-generator-creating-automatic-song-lyrics-with-neural-networks-b8a1617104fb)
-- [Computing Text Similarity] (http://tuprints.ulb.tu-darmstadt.de/4342/1/TUD-CS-2015-0017.pdf)
+- [Computing Text Similarity](http://tuprints.ulb.tu-darmstadt.de/4342/1/TUD-CS-2015-0017.pdf)
