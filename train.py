@@ -121,7 +121,7 @@ def one_hot_encode(word: str, word2idx: dict):
     return v
 
 def one_hot_decode(vec: np.ndarray, idx2word: dict):
-    return idx2word[np.argmax(word)]
+    return idx2word[np.argmax(vec)]
 
 def generate_batches(data_length, mini_batch_size):
     for begin in range(0, data_length, mini_batch_size):
@@ -142,7 +142,7 @@ def load_batch(xs, ys, begin, end, w2v, word2idx):
     sequence_length = len(xs_batch[0])
     
     x_train = np.zeros((batch_size, sequence_length, embedding_size), dtype=np.float64)
-    y_train = np.zeros((batch_size, vocab_size), dtype=np.int64)
+    y_train = np.zeros((batch_size,), dtype=np.int64)
     
     c = list(zip(xs_batch, ys_batch))
     shuffle(c)
@@ -164,28 +164,79 @@ class LyricsModel(nn.Module):
         self.embedding_size = embedding_size
         self.vocab_size = vocab_size
 
-        self.gru_1 = nn.GRU(self.embedding_size, self.hidden_size_1)
+        self.gru_1 = nn.GRU(self.embedding_size, self.hidden_size_1, batch_first=True)
         self.dropout_1 = nn.Dropout(p=0.4)
-        self.gru_2 = nn.GRU(self.hidden_size_1, self.hidden_size_2)
+        self.gru_2 = nn.GRU(self.hidden_size_1, self.hidden_size_2, batch_first=True)
         self.dropout_2 = nn.Dropout(p=0.4)
         self.linear_1 = nn.Linear(self.hidden_size_2, self.hidden_size_3)
         self.relu = nn.LeakyReLU()
-        self.linear_2 = nn.Linear(self.hidden_size_3, vocab_size)
+        self.linear_2 = nn.Linear(self.hidden_size_1, vocab_size)
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, sequence):
-        x, _ = self.gru_1(sequence)
-        x = self.dropout_1(x)
-        x, _ = self.gru_2(x)
-        x = self.dropout_2(x)
-        x = self.linear_1(x)
-        x = self.relu(x)
-        x = self.linear_2(x)
+        hidden1 = torch.zeros((1, sequence.shape[0], self.hidden_size_1))
+        #hidden2 = torch.zeros((1, sequence.shape[0], self.hidden_size_2))
+
+        x, h = self.gru_1(sequence, hidden1)
+        #x = self.dropout_1(x)
+        #_, h = self.gru_2(x, hidden2)
+        #x = self.dropout_2(h[-1])
+        #x = self.linear_1(x)
+        #x = self.relu(x)
+        #print("X:",x.shape)
+        #print("H:",h.shape)
+        #print("Last X:", x[:,-1,:].shape)
+
+        x = self.linear_2(x[:,-1,:])
         return self.softmax(x)
 
 SEQUENCE_LENGTH = 6
+BATCH_SIZE = 256
+
+from keras.models import Sequential, load_model
+from keras.layers import Dense, LSTM, Embedding, Dropout
+from keras.layers import LeakyReLU
+def build_keras_model(vocab_size, embedding_size):
+    model = Sequential()
+    model.add(LSTM(128, input_shape=(SEQUENCE_LENGTH, embedding_size), return_sequences=True))
+    model.add(Dropout(0.4))
+    model.add(LSTM(1024))
+    model.add(Dropout(0.4))
+    model.add(Dense(2048))
+    model.add(LeakyReLU(alpha=0.1))
+    model.add(Dense(vocab_size, activation='softmax'))
+    model.compile(loss = 'categorical_crossentropy', optimizer="rmsprop", metrics = ['accuracy'])
+    return model
 
 def main():
+    #w2v = KeyedVectors.load_word2vec_format('glove.6B.100d.bin.word2vec', binary=True)
+
+    # Load song dataset
+    x_train, y_train, vocab = load_songs_dataset("data/sentences.txt", SEQUENCE_LENGTH)
+    vocab_size = len(vocab)
+    print(x_train[0], y_train[0])
+    print("Vocab size:", vocab_size)
+
+    # Create index mapping for output layer
+    words = list(vocab)
+    word2idx = { word:i for i,word in enumerate(words) }
+    idx2word = { i:word for i,word in enumerate(words) }
+    
+    with open("vocab.txt", "w") as f:
+        for word in words:
+            f.write(word + "\n")
+
+
+    # Generate the model
+    # embedding_size = w2v.vector_size+EMBEDDING_EXT
+
+    # model = build_keras_model(vocab_size, embedding_size)
+    # for (i, (begin, end)) in enumerate(generate_batches(len(x_train), BATCH_SIZE)):
+    #     x_batch, y_batch = load_batch(x_train, y_train, begin, end, w2v, word2idx)
+
+    #     model.fit(x_batch, y_batch, epochs=10)
+
+def main2():
     w2v = KeyedVectors.load_word2vec_format('glove.6B.100d.bin.word2vec', binary=True)
 
     # Load song dataset
@@ -199,23 +250,20 @@ def main():
     word2idx = { word:i for i,word in enumerate(words) }
     idx2word = { i:word for i,word in enumerate(words) }
 
-    # Generate batches (size 256)
-    batches = generate_batches(len(x_train), 256)
-
     # Generate the model
     embedding_size = w2v.vector_size+EMBEDDING_EXT
     model = LyricsModel(embedding_size, vocab_size)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.RMSprop(model.parameters())
+    optimizer = optim.Adam(model.parameters())
 
     # Big Brain Time!
     for epoch in range(100):
-        
+
         running_loss = 0.0
-        for (i, (begin, end)) in enumerate(batches):
+        for (i, (begin, end)) in enumerate(generate_batches(len(x_train), BATCH_SIZE)):
             optimizer.zero_grad()
             x_batch, y_batch = load_batch(x_train, y_train, begin, end, w2v, word2idx)
-
+            
             x_batch = torch.FloatTensor(x_batch)
             y_batch = torch.LongTensor(y_batch)
 
@@ -230,9 +278,6 @@ def main():
                 running_loss = 0.0
 
             running_loss += loss.item()
-            
-    torch.save(net.state_dict(), "lyrics_gen.pth")
-        
 
 if __name__ == '__main__':
     main()
