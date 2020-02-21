@@ -1,8 +1,11 @@
+#!/usr/bin/env python3
 from keras.models import Sequential, load_model
 from keras.layers import Dense, LSTM, Embedding, Dropout
 from keras.layers import LeakyReLU
 from gensim.models import KeyedVectors
 import numpy as np
+from nltk import word_tokenize
+from typing import List
 
 EMBEDDING_EXT = 3
 
@@ -54,7 +57,7 @@ def encode_words(words, w2v):
         vec[i] = encode_word(word, w2v)
     return vec
 
-def build_keras_model(vocab_size, embedding_size):
+def build_keras_model(vocab_size: int, embedding_size: int):
     model = Sequential()
     model.add(LSTM(128, input_shape=(SEQUENCE_LENGTH, embedding_size), return_sequences=True))
     model.add(Dropout(0.4))
@@ -77,7 +80,6 @@ def sample(preds, temperature=1.0):
 
 SEQUENCE_LENGTH = 6
 EMBEDDING_SIZE = 103
-VOCAB_SIZE = 5111
 
 def load_vocab(path):
     vocab = list()
@@ -88,20 +90,19 @@ def load_vocab(path):
 
 class Sampler:
     def __init__(self, weights_path, vocab_path):
-        self.temperature = 1.4
         self.w2v = KeyedVectors.load_word2vec_format('glove.6B.100d.bin.word2vec', binary=True)
-        self.model = build_keras_model(VOCAB_SIZE, EMBEDDING_SIZE)
-        self.model.load_weights(weights_path)
-
         self.words = load_vocab(vocab_path)
+        self.vocab_size = len(self.words)
+
+        self.model = build_keras_model(self.vocab_size, EMBEDDING_SIZE)
+        self.model.load_weights(weights_path)
         self.idx2word = { i:word for i,word in enumerate(self.words) }
 
-    def sample(self, seed, num_words):
-        words_seq = encode_words(seed, self.w2v)
-        words_seq = words_seq.reshape(1, SEQUENCE_LENGTH, EMBEDDING_SIZE)
+    def _sample(self, seed, num_words, temperature):
+        words_seq = encode_words(seed, self.w2v).reshape(1, SEQUENCE_LENGTH, EMBEDDING_SIZE)
         result = seed.copy()
         for j in range(num_words):
-            word = self.idx2word[sample(self.model.predict(words_seq), temperature=self.temperature)]
+            word = self.idx2word[sample(self.model.predict(words_seq), temperature)]
             result.append(word)
 
             new_words = np.zeros((1, SEQUENCE_LENGTH, EMBEDDING_SIZE))
@@ -111,3 +112,22 @@ class Sampler:
             words_seq = new_words
 
         return result
+
+    def sample(self, seed: List[str], num_words: int, temperature=1.0):
+        if len(seed) < SEQUENCE_LENGTH:
+            raise Exception(f"Expected at least {SEQUENCE_LENGTH} words")
+        elif len(seed) > SEQUENCE_LENGTH:
+            new_seed = seed[len(seed)-SEQUENCE_LENGTH:]
+            prefix = seed[:len(seed)-SEQUENCE_LENGTH]
+            return prefix + self._sample(new_seed, num_words, temperature)
+        else:
+            return self._sample(seed, num_words, temperature)
+
+    def sample_sent(self, seed: str, num_words: int, temperature=1.0):
+        new_seed = word_tokenize(seed)
+        return self.sample(new_seed, num_words, temperature)
+
+    def sample_random(self, num_words, temperature=1.0):
+        idxs = np.random.choice(self.vocab_size, SEQUENCE_LENGTH, replace=True)
+        seed = [self.words[i] for i in idxs]
+        return self._sample(seed, num_words, temperature)
