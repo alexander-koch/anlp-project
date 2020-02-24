@@ -40,21 +40,31 @@ def encode_word(word: str, w2v: KeyedVectors):
         w = np.zeros((3,))
         return np.append(v, w, axis=0)
 
+def encode_sequence(seq, encode_fn, embedding_size):
+    v = np.zeros((len(seq), embedding_size))
+    for (i, element) in enumerate(seq):
+        v[i] = encode_fn(element)
+    return v
+
 def encode_word_sequence(words: List[str], w2v: KeyedVectors):
-    """
-    Encodes a sequence of words into the Word2Vec format.
+    encode_fn = lambda word: encode_word(word, w2v)
+    return encode_sequence(words, encode_fn, w2v.vector_size+EMBEDDING_EXT)
 
-    Args:
-        words: List/Iterator of words
-        w2v: Word2Vec instance
+# def encode_word_sequence(words: List[str], w2v: KeyedVectors):
+#     """
+#     Encodes a sequence of words into the Word2Vec format.
 
-    Returns:
-        Numpy array of encoded words
-    """
-    vec = np.zeros((len(words), w2v.vector_size+EMBEDDING_EXT))
-    for (i,word) in enumerate(words):
-        vec[i] = encode_word(word, w2v)
-    return vec
+#     Args:
+#         words: List/Iterator of words
+#         w2v: Word2Vec instance
+
+#     Returns:
+#         Numpy array of encoded words
+#     """
+#     vec = np.zeros((len(words), w2v.vector_size+EMBEDDING_EXT))
+#     for (i,word) in enumerate(words):
+#         vec[i] = encode_word(word, w2v)
+#     return vec
 
 def load_vocab(path, txt=False):
     if isinstance(path, str):
@@ -99,16 +109,20 @@ def one_hot_decode(word, idx2word):
     return idx2word[np.argmax(word)]
 
 def one_hot_encode_sequence(words, word2idx):
-    v = np.zeros((len(words), len(word2idx)))
-    for (i, word) in enumerate(words):
-        v[i] = one_hot_encode(word, word2idx)
-    return v
+    encode_fn = lambda word: one_hot_encode(word, word2idx)
+    return encode_sequence(words, encode_fn, len(word2idx))
 
-def one_hot_decode_sequence(vec, idx2word):
-    words = list()
-    for i in range(vec.shape[0]):
-        words.append(one_hot_decode(vec[i], idx2word))
-    return words
+# def one_hot_encode_sequence(words, word2idx):
+#     v = np.zeros((len(words), len(word2idx)))
+#     for (i, word) in enumerate(words):
+#         v[i] = one_hot_encode(word, word2idx)
+#     return v
+
+# def one_hot_decode_sequence(vec, idx2word):
+#     words = list()
+#     for i in range(vec.shape[0]):
+#         words.append(one_hot_decode(vec[i], idx2word))
+#     return words
 
 def generate_batches(data_length, mini_batch_size):
     for begin in range(0, data_length, mini_batch_size):
