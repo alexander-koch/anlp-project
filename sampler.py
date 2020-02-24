@@ -30,7 +30,7 @@ def build_character_level_model(vocab_size: int, sequence_length: int):
     return model
 
 class Sampler:
-    def __init__(self, model, vocab, encode_fn, sequence_length, embedding_size, idx2element):
+    def __init__(self, model, vocab, encode_fn, sequence_length, embedding_size):
         self.model = model
         self.vocab = vocab
         self.encode_fn = encode_fn
@@ -38,12 +38,14 @@ class Sampler:
 
         self.sequence_length = sequence_length
         self.embedding_size = embedding_size
-        self.idx2element = idx2element
+
+        self.idx2element = { i:element for i,element in enumerate(vocab) }
+        self.element2idx = { element:i for i,element in enumerate(vocab) }
 
     def _sample(self, seed, num_elements, temperature=1.0):
         element_seq = self.encode_seq_fn(seed).reshape(1, self.sequence_length, self.embedding_size)
         result = list(seed)
-        for j in range(num_elements):
+        for _ in range(num_elements):
             element = self.idx2element[util.sample(self.model.predict(element_seq), temperature)]
             result.append(element)
 
@@ -54,6 +56,12 @@ class Sampler:
             element_seq = new_element_seq
 
         return result
+
+    def proba(self, input_seq, expected_element):
+        element_seq = self.encode_seq_fn(input_seq).reshape(1, self.sequence_length, self.embedding_size)
+        preds = self.model.predict(element_seq)
+        idx = self.element2idx[expected_element]
+        return preds[0][idx]
 
     def sample(self, seed, num_elements, temperature=1.0):
         if len(seed) < self.sequence_length:
@@ -73,11 +81,8 @@ class Sampler:
 class WordSampler(Sampler):
     def __init__(self, model, w2v, words, sequence_length, embedding_size):
         self.w2v = w2v
-        self.vocab_size = len(words)
-
-        idx2word = { i:word for i,word in enumerate(words) }
         encode_fn = lambda word: util.encode_word(word, w2v)
-        super().__init__(model, words, encode_fn, sequence_length, embedding_size, idx2word)
+        super().__init__(model, words, encode_fn, sequence_length, embedding_size)
 
     @classmethod
     def from_paths(cls, weights_path, vocab_path, sequence_length):
@@ -94,22 +99,14 @@ class WordSampler(Sampler):
         return self.sample(new_seed, num_words, temperature)
 
 class CharacterSampler(Sampler):
-    def __init__(self, model, chars, sequence_length):
-        self.model = model
-        self.sequence_length = sequence_length
-        self.vocab_size = len(chars)
-        
+    def __init__(self, model, chars, sequence_length):        
         char2idx = { char:i for i,char in enumerate(chars) }
-        idx2char = { i:char for i,char in enumerate(chars) }
-
         encode_fn = lambda ch: util.one_hot_encode(ch, char2idx)
-        super().__init__(model, chars, encode_fn, sequence_length, self.vocab_size, idx2char)
+        super().__init__(model, chars, encode_fn, sequence_length, len(chars))
 
     @classmethod
     def from_paths(cls, weights_path, vocab_path, sequence_length):
         chars = util.load_vocab(vocab_path)
-        vocab_size = len(chars)
-
-        model = build_character_level_model(vocab_size, sequence_length)
+        model = build_character_level_model(len(chars), sequence_length)
         model.load_weights(weights_path)
         return cls(model, chars, sequence_length)
