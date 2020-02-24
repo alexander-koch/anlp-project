@@ -4,6 +4,7 @@ import numpy as np
 from gensim.models import KeyedVectors
 from typing import List
 from pathlib import Path
+import pickle
 
 EMBEDDING_EXT = 3
 
@@ -39,7 +40,7 @@ def encode_word(word: str, w2v: KeyedVectors):
         w = np.zeros((3,))
         return np.append(v, w, axis=0)
 
-def encode_words(words: List[str], w2v: KeyedVectors):
+def encode_word_sequence(words: List[str], w2v: KeyedVectors):
     """
     Encodes a sequence of words into the Word2Vec format.
 
@@ -55,21 +56,30 @@ def encode_words(words: List[str], w2v: KeyedVectors):
         vec[i] = encode_word(word, w2v)
     return vec
 
-def load_vocab(path):
+def load_vocab(path, txt=False):
     if isinstance(path, str):
         path = Path(path)
     vocab = list()
-    with path.open("r") as f:
-        for line in f.readlines():
-            vocab.append(line.rstrip())
+    if txt:
+        with path.open("r") as f:
+            for line in f.readlines():
+                vocab.append(line.rstrip())
+    else:
+        with path.open("rb") as f:
+            vocab = pickle.load(f)
     return vocab
 
-def write_vocab(path, words):
+def write_vocab(path, words, txt=False):
     if isinstance(path, str):
         path = Path(path)
-    with path.open("w") as f:
-        for word in words:
-            f.write(word + "\n")
+    if txt:
+        with path.open("w") as f:
+            for word in words:
+                f.write(word + "\n")
+    else:
+        words = list(words)
+        with path.open("wb") as f:
+            pickle.dump(words, f)
 
 def sample(preds, temperature=1.0):
     preds = preds.reshape(preds.shape[1])
@@ -99,3 +109,8 @@ def one_hot_decode_sequence(vec, idx2word):
     for i in range(vec.shape[0]):
         words.append(one_hot_decode(vec[i], idx2word))
     return words
+
+def generate_batches(data_length, mini_batch_size):
+    for begin in range(0, data_length, mini_batch_size):
+        end = min(begin + mini_batch_size, data_length)
+        yield begin, end
