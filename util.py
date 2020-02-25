@@ -46,6 +46,12 @@ def encode_sequence(seq, encode_fn, embedding_size):
         v[i] = encode_fn(element)
     return v
 
+def decode_sequence(seq, decode_fn):
+    elements = list()
+    for i in range(seq.shape[0]):
+        elements.append(decode_fn(seq[i]))
+    return elements
+
 def encode_word_sequence(words: List[str], w2v: KeyedVectors):
     encode_fn = lambda word: encode_word(word, w2v)
     return encode_sequence(words, encode_fn, w2v.vector_size+EMBEDDING_EXT)
