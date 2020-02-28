@@ -6,6 +6,9 @@ from gensim.models import Word2Vec
 from tqdm import tqdm
 import pandas as pd
 import itertools
+import pickle
+
+NUM_SONGS = 57650
 
 def convert_token(token):
     token = token.lower()
@@ -25,10 +28,14 @@ def generate_sentences_pd(path, chunksize, songs):
         yield chunk['text'].apply(convert_text)
 
 def build_csv():
+    vocab = set()
     with open("data/sentences.txt", "w") as f:
-        for song in tqdm(generate_sentences_pd("data/songdata.csv", 20, 400), total=400/20):
+        for song in tqdm(generate_sentences_pd("data/songdata.zip", 20, NUM_SONGS), total=NUM_SONGS/20):
             for tokens in song:
+                vocab = vocab.union(set(tokens))
                 f.write(' '.join(tokens) + "\n")
+    with open("vocab_kaggle.pkl", "wb") as f:
+        pickle.dump(list(vocab), f)
 
 if __name__ == '__main__':
     build_csv()

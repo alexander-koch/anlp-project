@@ -56,6 +56,18 @@ def encode_word_sequence(words: List[str], w2v: KeyedVectors):
     encode_fn = lambda word: encode_word(word, w2v)
     return encode_sequence(words, encode_fn, w2v.vector_size+EMBEDDING_EXT)
 
+def decode_vector(v, w2v):
+    base_vec = v[:w2v.vector_size]
+    ext_vec = v[w2v.vector_size:]
+    if ext_vec[0]:
+        return "<unk>"
+    elif ext_vec[1]:
+        return "<newline>"
+    elif ext_vec[2]:
+        return "<pad>"
+    else:
+        return w2v.similar_by_vector(base_vec)[0][0]
+
 # def encode_word_sequence(words: List[str], w2v: KeyedVectors):
 #     """
 #     Encodes a sequence of words into the Word2Vec format.
@@ -134,3 +146,20 @@ def generate_batches(data_length, mini_batch_size):
     for begin in range(0, data_length, mini_batch_size):
         end = min(begin + mini_batch_size, data_length)
         yield begin, end
+
+from nltk.tokenize.treebank import TreebankWordDetokenizer
+
+def revert_ctrl_token(token):
+    if token == "<pad>":
+        return ""
+    elif token == "<unk>":
+        return ""
+    elif token == "<newline>":
+        return "\n"
+    else:
+        return token
+
+def textify(tokens):
+    d = TreebankWordDetokenizer()
+    tokens = filter(lambda x: x != "", map(revert_ctrl_token, tokens))
+    return d.detokenize(tokens).replace("\n ", "\n")

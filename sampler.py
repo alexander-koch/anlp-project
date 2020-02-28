@@ -23,10 +23,9 @@ def build_word_level_model(vocab_size: int, sequence_length: int, embedding_size
 def build_character_level_model(vocab_size: int, sequence_length: int):
     model = Sequential()
     model.add(LSTM(512, input_shape=(sequence_length, vocab_size)))
-    model.add(Dropout(0.5))
-    model.add(LeakyReLU(alpha=0.1))
+    model.add(Dropout(0.4))
     model.add(Dense(vocab_size, activation='softmax'))
-    model.compile(loss = 'categorical_crossentropy', optimizer="adam", metrics = ['accuracy'])
+    model.compile(loss = 'categorical_crossentropy', optimizer="rmsprop", metrics = ['accuracy'])
     return model
 
 class Sampler:
