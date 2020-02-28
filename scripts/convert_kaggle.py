@@ -34,7 +34,7 @@ def build_csv():
             for tokens in song:
                 vocab = vocab.union(set(tokens))
                 f.write(' '.join(tokens) + "\n")
-    with open("vocab_kaggle.pkl", "wb") as f:
+    with open("../vocab_kaggle.pkl", "wb") as f:
         pickle.dump(list(vocab), f)
 
 if __name__ == '__main__':

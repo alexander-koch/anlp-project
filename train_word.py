@@ -10,7 +10,7 @@ import numpy as np
 
 from gensim.models import KeyedVectors
 
-checkpoint = ModelCheckpoint("weights_word_{epoch:01d}.h5",
+checkpoint = ModelCheckpoint("weights/weights_word_{epoch:01d}.h5",
     monitor='loss',
     verbose=1,
     mode='auto',
@@ -39,7 +39,7 @@ def build_model(vocab_size, sequence_length, embedding_size):
     return model
 
 def generate_ngrams(batch_size, sequence_length, embedding_size, idx2word, w2v):
-    with open("prep3.txt", "r") as f:
+    with open("ngrams_small.txt", "r") as f:
         x_train = np.zeros((batch_size, sequence_length, embedding_size))
         y_train = np.zeros((batch_size, ))
         i = 0
