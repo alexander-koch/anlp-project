@@ -12,23 +12,29 @@ This project requires python3.
 pip3 install -r requirements.txt
 ```
 
-## Setup
+## Setup & Training
 
-Download the Kaggle dataset from [here](https://www.kaggle.com/mousehead/songlyrics) and extract it. Then convert the data using the `data.py` script.
+Download the Kaggle dataset from [here](https://www.kaggle.com/mousehead/songlyrics) or use the provided zip file from data/songdata.
+Use the `convert_kaggle.py` script to generate the word vocabulary and to pre-tokenize all the songs.
 
-This will generate a file called `sentences.txt` which contains
-the tokenized song lyrics. Every song is contained in one line.
+Next the the vocabulary size needs to be reduced by using the `gen_vocab_word.py` script.
+This will use Mikolov subsampling to generate a vocabulary file that removes less common words.
 
-The current development model is in the Dev.ipynb IPython notebook.
-It uses GloVe vectors as the embedding.
+To train the word-level model, the training data needs to be generated beforehand.
+This can be done by running the `ngramify.py` script. For a fixed sequence length and a given
+vocabulary, the script will generated a text file consisting of training samples. Each sample
+is encoded using the provided vocabulary.
 
-Download the pre-trained model [here](http://nlp.stanford.edu/data/glove.6B.zip)
+Now the word-level model can be trained using `train_word.py`. Make sure to create a
+directory named `weights` and to download the [GloVe embedding vectors](http://nlp.stanford.edu/data/glove.6B.zip).
+The GloVe model needs to be converted into the word2vec format using `glove_conv.py`.
 
-Then convert the glove model into a word2vec format, using the following command
+To train the character-level model, no setup is required. The vocabulary will be built
+if it was not previously generated.
 
-```
-python3 scripts/glove_conv.py
-```
+## Development
+
+Previous development versions of the different models can be found in the various IPython notebooks.
 
 ## Papers
 

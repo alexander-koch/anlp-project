@@ -22,7 +22,7 @@ def ngramify(song, buffer_length, word2idx):
 def main():
     SEQ_LEN = 6
     VOCAB_PATH = "small_vocab.pkl"
-    OUTPUT_PATH = "prep3.txt"
+    OUTPUT_PATH = "ngrams_small.txt"
 
     songs = None
     with open("data/sentences.txt", "r") as f:
