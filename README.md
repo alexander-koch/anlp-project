@@ -36,6 +36,13 @@ if it was not previously generated.
 
 Previous development versions of the different models can be found in the various IPython notebooks.
 
+## File structure
+
+* sampler.py - Allows to sample from the character- and word-level models, given the paths to their weights and vocabularies
+* util.py - Collection of functions used to encode and pre-process the data into the correct formats
+* train_word.py - Word-level language model
+* train_char.py - Character-level language model
+
 ## Papers
 
 - [Deep Poetry](https://web.stanford.edu/class/archive/cs/cs224n/cs224n.1174/reports/2762063.pdf)
