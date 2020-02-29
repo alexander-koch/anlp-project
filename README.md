@@ -40,11 +40,13 @@ Now the word-level model can be trained using `train_char.py`.
 ### TL;DR
 
 ```sh
-mkdir weights
+wget http://nlp.stanford.edu/data/glove.6B.zip
+unzip glove.6B.zip
 python3 scripts/glove_conv.py
 python3 scripts/convert_kaggle.py
 python3 gen_vocab_word.py
 python3 ngramify_word.py
+mkdir weights
 python3 train_word.py
 python3 ngramify_char.py
 python3 train_char.py
