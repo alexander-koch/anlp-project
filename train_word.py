@@ -10,6 +10,9 @@ import numpy as np
 
 from gensim.models import KeyedVectors
 
+SEQUENCE_LENGTH = 6
+BATCH_SIZE = 256
+
 checkpoint = ModelCheckpoint("weights/weights_word_{epoch:01d}.h5",
     monitor='loss',
     verbose=1,
@@ -23,8 +26,6 @@ class LossHistory(Callback):
 
     def on_batch_end(self, batch, logs={}):
         self.losses.append(logs.get('loss'))
-
-SEQUENCE_LENGTH = 6
 
 def build_model(vocab_size, sequence_length, embedding_size):
     model = Sequential()
@@ -45,7 +46,7 @@ def generate_ngrams(batch_size, sequence_length, embedding_size, idx2word, w2v):
         i = 0
         for line in f:
             nums = line.split(" ")
-            xs = list(map(lambda x: idx2word[x], map(int, nums[:6])))
+            xs = list(map(lambda x: idx2word[x], map(int, nums[:sequence_length])))
             xs = util.encode_word_sequence(xs, w2v)
             y = int(nums[-1])
             x_train[i] = xs
@@ -71,7 +72,7 @@ def main():
     model = build_model(vocab_size, SEQUENCE_LENGTH, embedding_size)
     model.summary()
 
-    model.fit_generator(generate_ngrams(256, 6, embedding_size, idx2word, w2v), samples_per_epoch=100, epochs=4, callbacks=[checkpoint])
+    model.fit_generator(generate_ngrams(BATCH_SIZE, SEQUENCE_LENGTH, embedding_size, idx2word, w2v), samples_per_epoch=100, epochs=4, callbacks=[checkpoint])
 
 if __name__ == '__main__':
     main()
