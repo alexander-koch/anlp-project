@@ -106,7 +106,7 @@ def main():
             save_weights_only=True)
 
         model = build_model(vocab_size, SEQUENCE_LENGTH, embedding_size)
-        model.fit_generator(generate_batches(X_train, Y_train, BATCH_SIZE, SEQUENCE_LENGTH, embedding_size, idx2word, w2v), samples_per_epoch=300, epochs=4, callbacks=[checkpoint])
+        model.fit_generator(generate_batches(X_train, Y_train, BATCH_SIZE, embedding_size, idx2word, w2v), samples_per_epoch=300, epochs=4, callbacks=[checkpoint])
         perp = perplexity_score(model, X_test, Y_test, idx2word, w2v)
         print("Local perplexity:", perp)
         scores[i] = perp
