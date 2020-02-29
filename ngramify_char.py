@@ -9,6 +9,17 @@ SEQ_LEN = 8
 BUFFER_INC = 4096
 
 def build_samples(song, buffer_length):
+    """
+    Builds samples from characters.
+
+    Args:
+        song: String of characters
+        buffer_length: Number of characters to keep in a sequence
+    
+    Returns:
+        String of characters with length buffer_length
+    """
+
     tokens = song
     for i in range(0, len(song)):
         if i+buffer_length+1 >= len(tokens):

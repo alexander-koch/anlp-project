@@ -3,6 +3,17 @@ from tqdm import tqdm
 import numpy as np
 
 def ngramify(song, buffer_length, word2idx):
+    """
+    Builds n-grams with one lookahead token.
+
+    Args:
+        song: List of tokens
+        buffer_length: Number of tokens to keep in buffer
+        word2idx: Mapping from a word to an index
+
+    Returns:
+        Tuple of buffer_length tokens and a lookahead token
+    """
     tokens = song
     for i in range(0, len(song)):
         if i+buffer_length+1 >= len(tokens):

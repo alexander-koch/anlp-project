@@ -18,13 +18,6 @@ from sklearn.model_selection import KFold
 SEQUENCE_LENGTH = 8
 BATCH_SIZE = 256
 
-checkpoint = ModelCheckpoint("weights/weights_char_{epoch:01d}.h5",
-    monitor='loss',
-    verbose=1,
-    mode='auto',
-    period=1,
-    save_weights_only=True)
-
 def build_model(vocab_size):
     model = Sequential()
     model.add(LSTM(512, input_shape=(SEQUENCE_LENGTH, vocab_size)))
@@ -34,6 +27,17 @@ def build_model(vocab_size):
     return model
 
 def generate_batches(X_data, Y_data, batch_size, vocab_size):
+    """
+    Generates mini-batches.
+
+    Args:
+        X_data: Training data input
+        Y_data: Training data target
+        batch_size: Size of the mini-batches
+        vocab_size: Number of possible characters
+    Returns:
+        Tuple of numpy arrays (x, y)
+    """
     while True:
         x_train = np.zeros((batch_size, X_data.shape[1], vocab_size))
         y_train = np.zeros((batch_size, vocab_size))
@@ -52,6 +56,17 @@ def generate_batches(X_data, Y_data, batch_size, vocab_size):
                 i += 1
 
 def perplexity_score(estimator, X_test, Y_test, vocab_size):
+    """
+    Calculates the perplexity of an estimator.
+
+    Args:
+        estimator: Model that estimates the likelihood of the data
+        X_test: Test data input
+        Y_test: Test data target
+        vocab_size: Number of possible characters
+    Returns:
+        Perplexity, float
+    """
     perplexity = 0
     for j in range(2000):
         xs = np.zeros((1, X_test.shape[1], vocab_size))
