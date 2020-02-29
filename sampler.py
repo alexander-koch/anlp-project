@@ -57,12 +57,33 @@ class Sampler:
         return result
 
     def proba(self, input_seq, expected_element):
+        """
+        Determines the probability of an element occurring after a given sequence.
+
+        Args:
+            input_seq: Sequence to start with
+            expected_element: Element that should occur after the sequence
+        Returns:
+            Probability of observing the element given the sequence
+        """
+
         element_seq = self.encode_seq_fn(input_seq).reshape(1, self.sequence_length, self.embedding_size)
         preds = self.model.predict(element_seq)
         idx = self.element2idx[expected_element]
         return preds[0][idx]
 
     def sample(self, seed, num_elements, temperature=1.0):
+        """
+        Samples from the model using a seed.
+        The seed may be greater than the minimum required sequence length.
+
+        Args:
+            seed: Elements to start the prediction
+            num_elements: Number of elements to generate additionally
+            temperature: Temperature sampling parameter
+        Returns:
+            List of predicted elements
+        """
         if len(seed) < self.sequence_length:
             raise Exception(f"Expected at least {self.sequence_length} elements")
         elif len(seed) > self.sequence_length:
@@ -73,6 +94,16 @@ class Sampler:
             return self._sample(seed, num_elements, temperature)
 
     def sample_random(self, num_elements, temperature=1.0):
+        """
+        Samples by starting with a random seed.
+
+        Args:
+            num_elements: Number of elements to generate
+            temperature: Temperature sampling parameter
+
+        Returns:
+            List of sampled elements
+        """
         idxs = np.random.choice(len(self.vocab), self.sequence_length, replace=True)
         seed = [self.vocab[i] for i in idxs]
         return self._sample(seed, num_elements, temperature)
@@ -94,6 +125,16 @@ class WordSampler(Sampler):
         return cls(model, w2v, words, sequence_length, embedding_size)
 
     def sample_sent(self, seed: str, num_words: int, temperature=1.0):
+        """
+        Samples from the model by using a sentence as input.
+
+        Args:
+            seed: Sentence as a str
+            num_words: Number of word to generate
+
+        Returns:
+            List of sampled words
+        """
         new_seed = word_tokenize(seed)
         return self.sample(new_seed, num_words, temperature)
 
