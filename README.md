@@ -71,6 +71,11 @@ print(''.join(cs.sample("somebody once told me", 1337)))
 
 To convert the tokens back into text, once can use the textify function of the util module.
 
+## Evaluation
+
+The models are evaluted with k-Fold cross validation based on the model's perplexity.
+This happens automatically while the model is training (`train_word.py` or `train_char.py`).
+
 ## Development
 
 Previous development versions of the different models can be found in the various IPython notebooks.
