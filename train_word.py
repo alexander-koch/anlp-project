@@ -35,7 +35,7 @@ def generate_batches(X_data, Y_data, batch_size, embedding_size, idx2word, w2v):
         embedding_size: Size of the word embeddings
         idx2word: Mapping from indices to words
         w2v: Word2Vec
-    Returns:
+    Yields:
         Tuple of numpy arrays (x, y)
     """
     while True:

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from keras.models import Sequential, load_model
 from keras.layers import Dense, LSTM, Embedding, Dropout
 from keras.layers import LeakyReLU
@@ -116,6 +115,15 @@ class WordSampler(Sampler):
 
     @classmethod
     def from_paths(cls, weights_path, vocab_path, sequence_length):
+        """
+        Loads a word sampler from the specified paths.
+
+        Args:
+            weights_path: Path to the weights of the word-level language model
+            vocab_path: Pickled word vocabulary file path
+            sequence_length: Sequence length of the used model
+        """
+
         w2v = KeyedVectors.load_word2vec_format('glove.6B.100d.bin.word2vec', binary=True)
         words = util.load_vocab(vocab_path)
         embedding_size = w2v.vector_size + util.EMBEDDING_EXT
@@ -146,6 +154,14 @@ class CharacterSampler(Sampler):
 
     @classmethod
     def from_paths(cls, weights_path, vocab_path, sequence_length):
+        """
+        Loads a character sampler from the specified paths.
+
+        Args:
+            weights_path: Path to the weights of the character-level language model
+            vocab_path: Pickled character vocabulary file path
+            sequence_length: Sequence length of the used model
+        """
         chars = util.load_vocab(vocab_path)
         model = build_character_level_model(len(chars), sequence_length)
         model.load_weights(weights_path)

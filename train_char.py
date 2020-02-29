@@ -35,7 +35,7 @@ def generate_batches(X_data, Y_data, batch_size, vocab_size):
         Y_data: Training data target
         batch_size: Size of the mini-batches
         vocab_size: Number of possible characters
-    Returns:
+    Yields:
         Tuple of numpy arrays (x, y)
     """
     while True:

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import numpy as np
 from gensim.models import KeyedVectors
 from typing import List

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import util
 from tqdm import tqdm
 import numpy as np
@@ -11,7 +12,7 @@ def ngramify(song, buffer_length, word2idx):
         buffer_length: Number of tokens to keep in buffer
         word2idx: Mapping from a word to an index
 
-    Returns:
+    Yields:
         Tuple of buffer_length tokens and a lookahead token
     """
     tokens = song

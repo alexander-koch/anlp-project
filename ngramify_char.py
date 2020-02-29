@@ -16,7 +16,7 @@ def build_samples(song, buffer_length):
         song: String of characters
         buffer_length: Number of characters to keep in a sequence
     
-    Returns:
+    Yields:
         String of characters with length buffer_length
     """
 
