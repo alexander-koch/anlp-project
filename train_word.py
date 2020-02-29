@@ -38,20 +38,21 @@ def generate_batches(X_data, Y_data, batch_size, embedding_size, idx2word, w2v):
     Returns:
         Tuple of numpy arrays (x, y)
     """
-    x_train = np.zeros((batch_size, X_data.shape[1], embedding_size))
-    y_train = np.zeros((batch_size, ))
-    i = 0
-    for j in range(X_data.shape[0]):
-        xs = list(map(lambda x: idx2word[x], X_data[j]))
-        xs = util.encode_word_sequence(xs, w2v)
-        y = Y_data[j]
-        x_train[i] = xs
-        y_train[i] = y
-        if i >= batch_size-1:
-            yield x_train, y_train
-            i = 0
-        else:
-            i += 1
+    while True:
+        x_train = np.zeros((batch_size, X_data.shape[1], embedding_size))
+        y_train = np.zeros((batch_size, ))
+        i = 0
+        for j in range(X_data.shape[0]):
+            xs = list(map(lambda x: idx2word[x], X_data[j]))
+            xs = util.encode_word_sequence(xs, w2v)
+            y = Y_data[j]
+            x_train[i] = xs
+            y_train[i] = y
+            if i >= batch_size-1:
+                yield x_train, y_train
+                i = 0
+            else:
+                i += 1
 
 def perplexity_score(estimator, X_test, Y_test, idx2word, w2v):
     """

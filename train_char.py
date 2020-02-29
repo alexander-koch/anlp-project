@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 from random import shuffle
 import util
+import gc
 
 from keras.models import Sequential
 from keras.layers import Dense, LSTM, Embedding, Dropout, GRU, Bidirectional
@@ -12,6 +13,7 @@ from pathlib import Path
 from keras.callbacks import Callback
 from keras.callbacks import ModelCheckpoint
 from keras.optimizers import RMSprop
+from sklearn.model_selection import KFold
 
 SEQUENCE_LENGTH = 8
 BATCH_SIZE = 256
@@ -32,50 +34,33 @@ def build_model(vocab_size):
     model.compile(loss = 'categorical_crossentropy', optimizer="rmsprop", metrics = ['accuracy'])
     return model
 
-def build_samples(song, buffer_length):
-    tokens = song
-
-    x_train = []
-    y_train = []
-    for i in range(0, len(song)):
-        if i+buffer_length+1 >= len(tokens):
-            continue
-            
-        x_train.append(tokens[i:i+buffer_length])
-        y_train.append(tokens[i+buffer_length])
-
-    return x_train,y_train
-
-def generate_batches(songs, batch_size):
-    x_train, y_train = [], []
-    for song in songs:
-        xs, ys = build_samples(song, SEQUENCE_LENGTH)
-        x_train.extend(xs)
-        y_train.extend(ys)
-        if len(x_train) >= batch_size:
-            yield x_train[0:batch_size], y_train[0:batch_size]
-            x_train = x_train[batch_size:]
-            y_train = y_train[batch_size:]
-    if len(x_train) > 0:
-        yield x_train, y_train
-
-def generate_samples(songs, batch_size, vocab_size, char2idx):
+def generate_batches(X_data, Y_data, batch_size, vocab_size):
     while True:
-        batches = generate_batches(songs, batch_size)
-        for xs_batch, ys_batch in batches:
-            c = list(zip(xs_batch, ys_batch))
-            shuffle(c)
-            xs_batch, ys_batch = zip(*c)
+        x_train = np.zeros((batch_size, X_data.shape[1], vocab_size))
+        y_train = np.zeros((batch_size, vocab_size))
+        i = 0
+        for j in range(X_data.shape[0]):
+            for k in range(X_data.shape[1]):
+                x_train[i][k][X_data[j][k]] = 1
+            y_train[i][Y_data[j]] = 1
 
-            batch_size = len(xs_batch)
-            x_train = np.zeros((batch_size, SEQUENCE_LENGTH, vocab_size))
-            y_train = np.zeros((batch_size, vocab_size))
+            if i >= batch_size-1:
+                yield x_train, y_train
+                x_train = np.zeros((batch_size, X_data.shape[1], vocab_size))
+                y_train = np.zeros((batch_size, vocab_size))
+                i = 0
+            else:
+                i += 1
 
-            for i in range(batch_size):
-                x_train[i] = util.one_hot_encode_sequence(xs_batch[i], char2idx)
-                y_train[i] = util.one_hot_encode(ys_batch[i], char2idx)
+def perplexity_score(estimator, X_test, Y_test, vocab_size):
+    perplexity = 0
+    for j in range(2000):
+        xs = np.zeros((1, X_test.shape[1], vocab_size))
+        for i in range(X_test.shape[1]):
+            xs[0][i][X_test[j][i]] = 1
 
-            yield x_train, y_train
+        perplexity += np.log2(estimator.predict(xs)[0][Y_test[j]])
+    return np.power(2, -perplexity * 1/2000)
 
 def main():
     df = pd.read_csv("data/songdata.zip")
@@ -95,10 +80,35 @@ def main():
         
     vocab_size = len(chars)
     print("Vocab size:", vocab_size)
-    char2idx = { char:i for i,char in enumerate(chars) }
     
-    model = build_model(vocab_size)
-    model.fit_generator(generate_samples(df['text'], BATCH_SIZE, vocab_size, char2idx), samples_per_epoch=300, epochs=10, callbacks=[checkpoint])
+    data = np.load("ngrams_chars.npy")
+    X = data[:, :-1]
+    Y = data[:, -1]
+
+    kfold = KFold(n_splits=4)
+    scores = np.zeros((4,))
+    for (i, (train_index, test_index)) in enumerate(kfold.split(X)):
+        X_train, X_test = X[train_index], X[test_index]
+        Y_train, Y_test = Y[train_index], Y[test_index]
+
+        checkpoint = ModelCheckpoint("weights/weights_char_k{}_{}.h5".format(i, "{epoch:01d}"),
+            monitor='loss',
+            verbose=1,
+            mode='auto',
+            period=1,
+            save_weights_only=True)
+
+        model = build_model(vocab_size)
+        model.fit_generator(generate_batches(X_train, Y_train, BATCH_SIZE, vocab_size), samples_per_epoch=300, epochs=10, callbacks=[checkpoint])
+        perp = perplexity_score(model, X_test, Y_test, vocab_size)
+        print("Local perplexity:", perp)
+        scores[i] = perp
+
+        del X_train, X_test, Y_train, Y_test
+        del model
+        gc.collect()
+    print("Perplexity: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+
 
 if __name__ == '__main__':
     main()

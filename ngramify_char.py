@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-SEQ_LEN = 6
+SEQ_LEN = 8
 BUFFER_INC = 4096
 
 def build_samples(song, buffer_length):
@@ -35,7 +35,7 @@ def main():
     char2idx = { char:i for i,char in enumerate(chars) }
 
     buffer_size = BUFFER_INC
-    buffer = np.zeros((buffer_size,SEQ_LEN+1))
+    buffer = np.zeros((buffer_size,SEQ_LEN+1), dtype=np.int64)
     i = 0
     for song in tqdm(df['text']):
         for xs in build_samples(song, SEQ_LEN):
@@ -46,7 +46,7 @@ def main():
                 buffer_size += BUFFER_INC
                 buffer.resize((buffer_size,SEQ_LEN+1))
     buffer.resize(i, SEQ_LEN+1)
-    np.save("chars.npy", buffer)
+    np.save("ngrams_chars.npy", buffer)
 
 if __name__ == '__main__':
     main()
