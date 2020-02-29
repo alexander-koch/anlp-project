@@ -54,6 +54,23 @@ python3 train_char.py
 - Weights can be retrieved from the weights directory.
 - Format: `weights_{word/char}_{k-Fold number}_{epoch number}`
 
+## Sampling
+
+Sampling from the models can be done using the `sampler.py` module.
+
+```python
+from sampler import *
+import util
+
+ws = WordSampler.from_paths("weights/weights_word_k3_4.h5", "small_vocab.pkl", 6)
+cs = CharacterSampler.from_paths("weights/weights_char_k3_10.h5", "chars.pkl", 8)
+
+print(util.textify(ws.sample_sent("never gonna give you up, never gonna", 42)))
+print(''.join(cs.sample("somebody once told me", 1337)))
+```
+
+To convert the tokens back into text, once can use the textify function of the util module.
+
 ## Development
 
 Previous development versions of the different models can be found in the various IPython notebooks.

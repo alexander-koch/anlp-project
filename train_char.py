@@ -29,7 +29,6 @@ def build_model(vocab_size):
     model = Sequential()
     model.add(LSTM(512, input_shape=(SEQUENCE_LENGTH, vocab_size)))
     model.add(Dropout(0.4))
-    #model.add(LeakyReLU(alpha=0.1))
     model.add(Dense(vocab_size, activation='softmax'))
     model.compile(loss = 'categorical_crossentropy', optimizer="rmsprop", metrics = ['accuracy'])
     return model

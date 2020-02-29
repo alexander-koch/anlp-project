@@ -1,6 +1,5 @@
 import util
 from tqdm import tqdm
-import h5py
 import numpy as np
 
 def ngramify(song, buffer_length, word2idx):

@@ -17,7 +17,7 @@ def build_word_level_model(vocab_size: int, sequence_length: int, embedding_size
     model.add(Dense(2048))
     model.add(LeakyReLU(alpha=0.1))
     model.add(Dense(vocab_size, activation='softmax'))
-    model.compile(loss = 'categorical_crossentropy', optimizer="rmsprop", metrics = ['accuracy'])
+    model.compile(loss = 'sparse_categorical_crossentropy', optimizer="rmsprop", metrics = ['accuracy'])
     return model
 
 def build_character_level_model(vocab_size: int, sequence_length: int):
