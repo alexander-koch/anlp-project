@@ -23,13 +23,6 @@ checkpoint = ModelCheckpoint("weights/weights_char_{epoch:01d}.h5",
     period=1,
     save_weights_only=True)
 
-class LossHistory(Callback):
-    def on_train_begin(self, logs={}):
-        self.losses = []
-
-    def on_batch_end(self, batch, logs={}):
-        self.losses.append(logs.get('loss'))
-
 def build_model(vocab_size):
     model = Sequential()
     model.add(LSTM(512, input_shape=(SEQUENCE_LENGTH, vocab_size)))

@@ -1,25 +1,16 @@
 #!/usr/bin/env python3
+import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense, LSTM, Dropout, GRU
 from keras.layers import LeakyReLU
 from keras.callbacks import Callback
 from keras.callbacks import ModelCheckpoint
 from sklearn.model_selection import KFold
-
-import util
-import numpy as np
-
 from gensim.models import KeyedVectors
+import util
 
 SEQUENCE_LENGTH = 6
 BATCH_SIZE = 256
-
-class LossHistory(Callback):
-    def on_train_begin(self, logs={}):
-        self.losses = []
-
-    def on_batch_end(self, batch, logs={}):
-        self.losses.append(logs.get('loss'))
 
 def build_model(vocab_size, sequence_length, embedding_size):
     model = Sequential()
@@ -72,9 +63,6 @@ def main():
     embedding_size = w2v.vector_size + util.EMBEDDING_EXT
     print("Embedding size:", embedding_size)
 
-    model = build_model(vocab_size, SEQUENCE_LENGTH, embedding_size)
-    model.summary()
-
     data = np.load("ngrams_small.npy")
     X = data[:, :-1]
     Y = data[:, -1]
@@ -92,6 +80,7 @@ def main():
             period=1,
             save_weights_only=True)
 
+        model = build_model(vocab_size, SEQUENCE_LENGTH, embedding_size)
         model.fit_generator(generate_ngrams(X_train, Y_train, BATCH_SIZE, SEQUENCE_LENGTH, embedding_size, idx2word, w2v), samples_per_epoch=300, epochs=4, callbacks=[checkpoint])
         perp = perplexity_score(model, X_test, Y_test, idx2word, w2v)
         print("Local perplexity:", perp)

@@ -3,5 +3,6 @@
 .ipynb_checkpoints
 glove.6B.*
 *.h5
-*.bin
 __pycache__
+*.npy
+*.pkl
