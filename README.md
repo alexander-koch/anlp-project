@@ -17,7 +17,7 @@ pip3 install -r requirements.txt
 ### Word-level language model
 
 Download the Kaggle dataset from [here](https://www.kaggle.com/mousehead/songlyrics) or use the provided zip file from data/songdata.
-Use the `convert_kaggle.py` script to generate the word vocabulary and to pre-tokenize all the songs.
+Use the `scripts/convert_kaggle.py` script to generate the word vocabulary and to pre-tokenize all the songs.
 
 Next the the vocabulary size needs to be reduced by using the `gen_vocab_word.py` script.
 This will use Mikolov subsampling to generate a vocabulary file that removes less common words.
@@ -29,7 +29,7 @@ is encoded using the provided vocabulary.
 
 Now the word-level model can be trained using `train_word.py`. Make sure to create a
 directory named `weights` and to download the [GloVe embedding vectors](http://nlp.stanford.edu/data/glove.6B.zip).
-The GloVe model needs to be converted into the word2vec format using `glove_conv.py`.
+The GloVe model needs to be converted into the word2vec format using `scripts/glove_conv.py`.
 
 ### Character-level language model
 
