@@ -37,19 +37,31 @@ To train the character-level model, training samples need to be generated before
 Run `ngramify_char.py`, similar to the word-level model.
 Now the word-level model can be trained using `train_char.py`.
 
-### TL;DR
+### Quickstart
+
+Setup
 
 ```sh
 wget http://nlp.stanford.edu/data/glove.6B.zip
 unzip glove.6B.zip
 python3 scripts/glove_conv.py
 python3 scripts/convert_kaggle.py
-python3 gen_vocab_word.py
-python3 ngramify_word.py
 mkdir weights
-python3 train_word.py
-python3 ngramify_char.py
-python3 train_char.py
+```
+
+Training the word-level model
+
+```sh
+python3 gen_vocab_word.py -o small_vocab.pkl
+python3 ngramify_word.py -i small_vocab.pkl -o ngrams_small.npy
+python3 train_word.py -i ngrams_small.npy -v small_vocab.pkl
+```
+
+Training the character-level model
+
+```sh
+python3 ngramify_char.py -o ngrams_chars.npy
+python3 train_char.py -i ngrams_chars.npy
 ```
 
 - Vocabulary files will be saved in *.pkl files.
@@ -80,7 +92,7 @@ This happens automatically while the model is training (`train_word.py` or `trai
 
 ## Development
 
-Previous development versions of the different models can be found in the various IPython notebooks.
+Previous development versions of the different models and a statistical analysis can be found in the various IPython notebooks.
 
 ## File structure
 

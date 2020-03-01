@@ -14,13 +14,14 @@ from keras.callbacks import Callback
 from keras.callbacks import ModelCheckpoint
 from keras.optimizers import RMSprop
 from sklearn.model_selection import KFold
+import argparse
 
-SEQUENCE_LENGTH = 8
+DEFAULT_SEQ_LEN = 8
 BATCH_SIZE = 256
 
-def build_model(vocab_size):
+def build_model(sequence_length, vocab_size):
     model = Sequential()
-    model.add(LSTM(512, input_shape=(SEQUENCE_LENGTH, vocab_size)))
+    model.add(LSTM(512, input_shape=(sequence_length, vocab_size)))
     model.add(Dropout(0.4))
     model.add(Dense(vocab_size, activation='softmax'))
     model.compile(loss = 'categorical_crossentropy', optimizer="rmsprop", metrics = ['accuracy'])
@@ -77,6 +78,16 @@ def perplexity_score(estimator, X_test, Y_test, vocab_size):
     return np.power(2, -perplexity * 1/2000)
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--input", help="Input .npy training data", required=True)
+    parser.add_argument("-s", "--seqlen", help="Sequence length")
+    args = parser.parse_args()
+
+    if not args.seqlen:
+        sequence_length = DEFAULT_SEQ_LEN
+    else:
+        sequence_length = int(args.seqlen)
+
     df = pd.read_csv("data/songdata.zip")
     path = Path("chars.pkl")
     chars = list()
@@ -95,7 +106,7 @@ def main():
     vocab_size = len(chars)
     print("Vocab size:", vocab_size)
     
-    data = np.load("ngrams_chars.npy")
+    data = np.load(args.input)
     X = data[:, :-1]
     Y = data[:, -1]
 
@@ -112,7 +123,7 @@ def main():
             period=1,
             save_weights_only=True)
 
-        model = build_model(vocab_size)
+        model = build_model(sequence_length, vocab_size)
         model.fit_generator(generate_batches(X_train, Y_train, BATCH_SIZE, vocab_size), samples_per_epoch=300, epochs=10, callbacks=[checkpoint])
         perp = perplexity_score(model, X_test, Y_test, vocab_size)
         print("Local perplexity:", perp)

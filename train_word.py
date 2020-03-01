@@ -8,8 +8,9 @@ from keras.callbacks import ModelCheckpoint
 from sklearn.model_selection import KFold
 from gensim.models import KeyedVectors
 import util
+import argparse
 
-SEQUENCE_LENGTH = 6
+DEFAULT_SEQ_LEN = 6
 BATCH_SIZE = 256
 
 def build_model(vocab_size, sequence_length, embedding_size):
@@ -78,9 +79,20 @@ def perplexity_score(estimator, X_test, Y_test, idx2word, w2v):
     return np.power(2, -perplexity * 1/2000)
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--input", help="Input .npy training data", required=True)
+    parser.add_argument("-v", "--vocab", help="Training vocab", required=True)
+    parser.add_argument("-s", "--seqlen", help="Sequence length")
+    args = parser.parse_args()
+
+    if not args.seqlen:
+        sequence_length = DEFAULT_SEQ_LEN
+    else:
+        sequence_length = int(sequence_length)
+
     w2v = KeyedVectors.load_word2vec_format('glove.6B.100d.bin.word2vec', binary=True)
 
-    words = util.load_vocab("small_vocab.pkl")
+    words = util.load_vocab(args.vocab)
     vocab_size = len(words)
     print("Vocab size:", vocab_size)
     print("W2V vocab size:", len(w2v.vocab))
@@ -89,7 +101,7 @@ def main():
     embedding_size = w2v.vector_size + util.EMBEDDING_EXT
     print("Embedding size:", embedding_size)
 
-    data = np.load("ngrams_small.npy")
+    data = np.load(args.input)
     X = data[:, :-1]
     Y = data[:, -1]
 
@@ -106,7 +118,7 @@ def main():
             period=1,
             save_weights_only=True)
 
-        model = build_model(vocab_size, SEQUENCE_LENGTH, embedding_size)
+        model = build_model(vocab_size, sequence_length, embedding_size)
         model.fit_generator(generate_batches(X_train, Y_train, BATCH_SIZE, embedding_size, idx2word, w2v), samples_per_epoch=300, epochs=4, callbacks=[checkpoint])
         perp = perplexity_score(model, X_test, Y_test, idx2word, w2v)
         print("Local perplexity:", perp)

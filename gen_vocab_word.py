@@ -2,14 +2,27 @@
 from random import random
 import math
 import util
+import argparse
 
+SRC_PATH = "data/sentences.txt"
 SRC_VOCAB_PATH = "vocab_kaggle.pkl"
-DST_VOCAB_PATH = "small_vocab.pkl"
+DEFAULT_THRESH = 1e-4
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-t", "--threshold", help="Threshold to drop words")
+    parser.add_argument("-o", "--output", help="Output .pkl path", required=True)
+    args = parser.parse_args()
+
+    if not args.threshold:
+        threshold = DEFAULT_THRESH
+    else:
+        threshold = float(args.threshold)
+    print("Threshold:", threshold)
+
     print("Calculating word frequencies...")
     freqs = dict()
-    with open("data/sentences.txt", "r") as f:
+    with open(SRC_PATH, "r") as f:
         for line in f:
             for token in line.rstrip().split(" "):
                 if token not in freqs:
@@ -18,7 +31,6 @@ def main():
                     freqs[token] += 1
 
     total_words = len(freqs.keys())
-    threshold = 1e-4
     discard = set()
     for word in freqs.keys():
         z = freqs[word] / total_words
@@ -32,8 +44,8 @@ def main():
 
     words = util.load_vocab(SRC_VOCAB_PATH)
     new_words = list(set(words).difference(discard))
-    util.write_vocab(DST_VOCAB_PATH, new_words)
-    print("Vocab written to:", DST_VOCAB_PATH)
+    util.write_vocab(args.output, new_words)
+    print("Vocab written to:", args.output)
 
 if __name__ == '__main__':
     main()

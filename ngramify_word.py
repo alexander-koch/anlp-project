@@ -2,6 +2,11 @@
 import util
 from tqdm import tqdm
 import numpy as np
+import argparse
+
+SRC_PATH = "data/sentences.txt"
+BUFFER_INC = 4096
+DEFAULT_SEQ_LEN = 6
 
 def ngramify(song, buffer_length, word2idx):
     """
@@ -33,23 +38,32 @@ def ngramify(song, buffer_length, word2idx):
         yield xs, y
 
 def main():
-    SEQ_LEN = 6
-    VOCAB_PATH = "small_vocab.pkl"
-    OUTPUT_PATH = "ngrams_small.npy"
-    BUFFER_INC = 4096
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--input", help="Input vocabulary", required=True)
+    parser.add_argument("-s", "--seqlen", help="Sequence length")
+    parser.add_argument("-o", "--output", help="Output .npy path", required=True)
+    args = parser.parse_args()
 
+    if not args.seqlen:
+        seq_len = DEFAULT_SEQ_LEN
+    else:
+        seq_len = int(args.seqlen)
+    
+    print("Reading songs...")
     songs = None
-    with open("data/sentences.txt", "r") as f:
+    with open(SRC_PATH, "r") as f:
         songs = [line.rstrip().split(" ") for line in f]
 
-    words = util.load_vocab(VOCAB_PATH)
+    print("Loading vocab...")
+    words = util.load_vocab(args.input)
     word2idx = { word:i for i,word in enumerate(words) }
     buffer_size = BUFFER_INC
 
-    buffer = np.zeros((buffer_size,SEQ_LEN+1), dtype=np.int64)
+    print("Generating ngrams...")
+    buffer = np.zeros((buffer_size,seq_len+1), dtype=np.int64)
     i = 0
     for song in tqdm(songs):
-        for xs, y in ngramify(song, SEQ_LEN, word2idx):
+        for xs, y in ngramify(song, seq_len, word2idx):
             xs = [word2idx[x] for x in xs]
             y = word2idx[y]
             xs.append(y)
@@ -58,9 +72,10 @@ def main():
 
             if i >= buffer_size:
                 buffer_size += BUFFER_INC
-                buffer.resize((buffer_size,SEQ_LEN+1))
-    buffer.resize(i, SEQ_LEN+1)
-    np.save(OUTPUT_PATH, buffer)
+                buffer.resize((buffer_size,seq_len+1))
+    buffer.resize(i, seq_len+1)
+    print("Saving to {}...".format(args.output))
+    np.save(args.output, buffer)
 
 if __name__ == '__main__':
     main()

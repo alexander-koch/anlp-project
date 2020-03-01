@@ -4,9 +4,11 @@ import util
 from pathlib import Path
 import numpy as np
 from tqdm import tqdm
+import argparse
 
-SEQ_LEN = 8
+DEFAULT_SEQ_LEN = 8
 BUFFER_INC = 4096
+SRC_PATH = "data/songdata.zip"
 
 def build_samples(song, buffer_length):
     """
@@ -27,12 +29,22 @@ def build_samples(song, buffer_length):
         yield tokens[i:i+buffer_length+1]
 
 def main():
-    df = pd.read_csv("data/songdata.zip")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s", "--seqlen", help="Sequence length")
+    parser.add_argument("-o", "--output", help="Output .npy path", required=True)
+    args = parser.parse_args()
+
+    if not args.seqlen:
+        seq_len = DEFAULT_SEQ_LEN
+    else:
+        seq_len = int(args.seqlen)
+
+    df = pd.read_csv(SRC_PATH)
     path = Path("chars.pkl")
     chars = list()
     if path.is_file():
         chars = util.load_vocab(path)
-        print("Loaded from file")
+        print("Loaded vocabulary from file")
     else:
         vocab = set()
         for song in df["text"]:
@@ -40,24 +52,27 @@ def main():
             vocab = vocab.union(chars)
         chars = list(vocab)
         util.write_vocab(path, chars)
+        print("Generated character vocabulary as chars.pkl")
 
     vocab_size = len(chars)
     print("Vocab size:", vocab_size)
     char2idx = { char:i for i,char in enumerate(chars) }
 
+    print("Generating training samples...")
     buffer_size = BUFFER_INC
-    buffer = np.zeros((buffer_size,SEQ_LEN+1), dtype=np.int64)
+    buffer = np.zeros((buffer_size,seq_len+1), dtype=np.int64)
     i = 0
     for song in tqdm(df['text']):
-        for xs in build_samples(song, SEQ_LEN):
+        for xs in build_samples(song, seq_len):
             buffer[i] = [char2idx[x] for x in xs]
             i += 1
 
             if i >= buffer_size:
                 buffer_size += BUFFER_INC
-                buffer.resize((buffer_size,SEQ_LEN+1))
-    buffer.resize(i, SEQ_LEN+1)
-    np.save("ngrams_chars.npy", buffer)
+                buffer.resize((buffer_size,seq_len+1))
+    buffer.resize(i, seq_len+1)
+    print("Saving to {}...".format(args.output))
+    np.save(args.output, buffer)
 
 if __name__ == '__main__':
     main()
